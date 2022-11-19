@@ -5,6 +5,7 @@
 
 use std::fs;
 use serde::{Serialize, Deserialize};
+use tauri::{CustomMenuItem, SystemTray, SystemTrayMenu, SystemTrayEvent, Manager};
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -39,6 +40,35 @@ fn list_dir(dir: &str) -> Vec<Entry> {
 
 fn main() {
     tauri::Builder::default()
+        .setup(|app| {
+            let tray_handle = SystemTray::new()
+              .with_menu(
+                SystemTrayMenu::new()
+                    .add_item(CustomMenuItem::new("flip", "Flip"))
+                    .add_item(CustomMenuItem::new("quit", "Quit"))
+              )
+              .build(app)?;
+            Ok(())
+          })
+        .on_system_tray_event(|app, event| {
+            let main_window = app.get_window("main").unwrap();
+            match event {
+                SystemTrayEvent::MenuItemClick { id, .. } => {
+                    match id.as_str() {
+                        "quit" => app.exit(0),
+                        "flip" => if main_window.is_visible().unwrap() {
+                                main_window.hide().unwrap()
+                            } else {
+                                main_window.show().unwrap()
+                            },
+                        _ => {
+                        }
+                    }
+
+                }
+                _ => {}
+            }
+        })
         .invoke_handler(tauri::generate_handler![greet, list_dir])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
